@@ -1,13 +1,16 @@
 terraform {
   backend "s3" {
-    bucket = "ten-bucket-r2-cua-team" # Tên bucket team
-    key    = "terraform.tfstate"      # Tên file state
+    bucket = "svuit-terraform-cloudflare"
+    key    = "terraform.tfstate"
+    region = "us-east-1"
+    endpoints = {
+      s3 = "https://236c34443d0b37575866b671a040ea6f.r2.cloudflarestorage.com"
+    }
 
-    endpoint                   = "https://<account_id>.r2.cloudflarestorage.com" #thay account id
-    region                     = "us-east-1"
-    skip_region_validation     = true
-    skip_requesting_account_id = true
-    skip_s3_checksum           = true
-    skip_metadata_api_check    = true
+    skip_credentials_validation = true
+    skip_region_validation      = true
+    skip_requesting_account_id  = true
+    skip_metadata_api_check     = true
+    skip_s3_checksum            = true
   }
 }
