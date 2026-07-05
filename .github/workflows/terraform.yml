@@ -61,7 +61,14 @@ jobs:
         uses: actions/github-script@v7
         if: github.event_name == 'pull_request'
         env:
-          PLAN: "terraform\n${{ steps.plan.outputs.stdout }}"
+          PLAN_STDOUT: ${{ steps.plan.outputs.stdout }}
+          FMT_OUTCOME: ${{ steps.fmt.outcome }}
+          INIT_OUTCOME: ${{ steps.init.outcome }}
+          VALIDATE_OUTCOME: ${{ steps.validate.outcome }}
+          PLAN_OUTCOME: ${{ steps.plan.outcome }}
+          VALIDATE_STDOUT: ${{ steps.validate.outputs.stdout }}
+          WORKING_DIR: ${{ env.tf_actions_working_dir }}
+          WORKFLOW_NAME: ${{ github.workflow }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -74,38 +81,40 @@ jobs:
               comment.user.type === 'Bot' && comment.body.includes('Terraform Format and Style')
             );
 
-            const output = `#### Terraform Format and Style: \`${{ steps.fmt.outcome }}\`
-            #### Terraform Initialization: \`${{ steps.init.outcome }}\`
-            #### Terraform Validation: \`${{ steps.validate.outcome }}\`
-            <details><summary>Validation Output</summary>
-
-            \`\`\`\n
-            ${{ steps.validate.outputs.stdout }}
-            \`\`\`
-
-            </details>
-
-            #### Terraform Plan: \`${{ steps.plan.outcome }}\`
-
-            <details><summary>Show Plan</summary>
-
-            \`\`\`\n
-            ${process.env.PLAN}
-            \`\`\`
-
-            </details>
-
-            *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`, Working Directory: \`${{ env.tf_actions_working_dir }}\`, Workflow: \`${{ github.workflow }}\`*`;
+            const output = [
+              `#### Terraform Format and Style: \`${process.env.FMT_OUTCOME}\``,
+              `#### Terraform Initialization: \`${process.env.INIT_OUTCOME}\``,
+              `#### Terraform Validation: \`${process.env.VALIDATE_OUTCOME}\``,
+              '<details><summary>Validation Output</summary>',
+              '',
+              '```',
+              process.env.VALIDATE_STDOUT || '',
+              '```',
+              '',
+              '</details>',
+              '',
+              `#### Terraform Plan: \`${process.env.PLAN_OUTCOME}\``,
+              '',
+              '<details><summary>Show Plan</summary>',
+              '',
+              '```',
+              `terraform\n${process.env.PLAN_STDOUT || ''}`,
+              '```',
+              '',
+              '</details>',
+              '',
+              `*Pusher: @${context.actor}, Action: \`${context.eventName}\`, Working Directory: \`${process.env.WORKING_DIR}\`, Workflow: \`${process.env.WORKFLOW_NAME}\`*`,
+            ].join('\n');
 
             if (botComment) {
-              github.rest.issues.updateComment({
+              await github.rest.issues.updateComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 comment_id: botComment.id,
                 body: output
               });
             } else {
-              github.rest.issues.createComment({
+              await github.rest.issues.createComment({
                 issue_number: context.issue.number,
                 owner: context.repo.owner,
                 repo: context.repo.repo,
